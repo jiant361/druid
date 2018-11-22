@@ -92,12 +92,12 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
     private static final long                serialVersionUID          = 1L;
     // stats
     private volatile long                    recycleErrorCount         = 0L;
-    private long                             connectCount              = 0L;
+    private long                             connectCount              = 0L;//尝试连接的数量，累计值
     private long                             closeCount                = 0L;
     private volatile long                    connectErrorCount         = 0L;
     private long                             recycleCount              = 0L;
     private long                             removeAbandonedCount      = 0L;
-    private long                             notEmptyWaitCount         = 0L;
+    private long                             notEmptyWaitCount         = 0L;//获取连接时进行等待了的总次数，累计值
     private long                             notEmptySignalCount       = 0L;
     private long                             notEmptyWaitNanos         = 0L;
     private int                              keepAliveCheckCount       = 0;
@@ -107,10 +107,10 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
     private long                             poolingPeakTime           = 0;
     // store
     private volatile DruidConnectionHolder[] connections;
-    private int                              poolingCount              = 0;
-    private int                              activeCount               = 0;
+    private int                              poolingCount              = 0;//池中的连接数 ，伴随着connections[]数组变化而变化，当获取连接成功时将该值减一，相当于从connections中移除
+    private int                              activeCount               = 0;//正常使用中的连接数，获取连接成功时将该值加1
     private long                             discardCount              = 0;
-    private int                              notEmptyWaitThreadCount   = 0;
+    private int                              notEmptyWaitThreadCount   = 0;//获取连接时，当前等待获取连接的线程数，实时变化
     private int                              notEmptyWaitThreadPeak    = 0;
     //
     private DruidConnectionHolder[]          evictConnections;
@@ -855,9 +855,9 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             }
             dataSourceStat.setResetStatEnable(this.resetStatEnable);
 
-            connections = new DruidConnectionHolder[maxActive];
-            evictConnections = new DruidConnectionHolder[maxActive];
-            keepAliveConnections = new DruidConnectionHolder[maxActive];
+            connections = new DruidConnectionHolder[maxActive];//可用线程
+            evictConnections = new DruidConnectionHolder[maxActive];//待销毁线程
+            keepAliveConnections = new DruidConnectionHolder[maxActive];//保活线程
 
             SQLException connectError = null;
 
@@ -2309,7 +2309,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
                     boolean emptyWait = true;
 
-                    if (createError != null && poolingCount == 0) {
+                    if (createError != null && poolingCount == 0) {//表示初始化创建时一个连接都没有创建成功
                         emptyWait = false;
                     }
 

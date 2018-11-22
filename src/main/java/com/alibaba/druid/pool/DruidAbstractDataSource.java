@@ -157,7 +157,7 @@ public abstract class DruidAbstractDataSource extends WrapperAdapter implements 
 
     protected volatile String                          dbType;
 
-    protected volatile long                            timeBetweenConnectErrorMillis             = DEFAULT_TIME_BETWEEN_CONNECT_ERROR_MILLIS;
+    protected volatile long                            timeBetweenConnectErrorMillis             = DEFAULT_TIME_BETWEEN_CONNECT_ERROR_MILLIS;//创建连接错误时重试的间隔时间
 
     protected volatile ValidConnectionChecker          validConnectionChecker                    = null;
 
@@ -166,7 +166,7 @@ public abstract class DruidAbstractDataSource extends WrapperAdapter implements 
 
     protected long                                     id;
 
-    protected int                                      connectionErrorRetryAttempts              = 1;
+    protected int                                      connectionErrorRetryAttempts              = 1;//创建连接错误时重试次数
     protected boolean                                  breakAfterAcquireFailure                  = false;
     protected long                                     transactionThresholdMillis                = 0L;
 
@@ -221,7 +221,7 @@ public abstract class DruidAbstractDataSource extends WrapperAdapter implements 
     protected volatile Throwable                       createError;
     protected volatile Throwable                       lastError;
     protected volatile long                            lastErrorTimeMillis;
-    protected volatile Throwable                       lastCreateError;
+    protected volatile Throwable                       lastCreateError; //倒数第二个创建失败的错误
     protected volatile long                            lastCreateErrorTimeMillis;
     protected volatile long                            lastCreateStartTimeMillis;
 
@@ -995,6 +995,7 @@ public abstract class DruidAbstractDataSource extends WrapperAdapter implements 
             return;
         }
 
+        if (maxWaitMillis > 0 && useUnfairLock == null && !this.inited) {
         if (maxWaitMillis > 0 && useUnfairLock == null && !this.inited) {
             final ReentrantLock lock = this.lock;
             lock.lock();
