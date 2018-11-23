@@ -2762,7 +2762,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
     @Override
     public void shrink() {
-        shrink(false, false);
+        shrink(false, false);//为了适配c3p0连接池，Druid本身checkTime写死为true
     }
 
     public void shrink(boolean checkTime) {
@@ -2783,15 +2783,15 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 return;
             }
 
-            final int checkCount = poolingCount - minIdle;
+            final int checkCount = poolingCount - minIdle;//池的大小-可空闲大小=需要检查要关闭的连接数
             final long currentTimeMillis = System.currentTimeMillis();
             for (int i = 0; i < poolingCount; ++i) {
                 DruidConnectionHolder connection = connections[i];
 
-                if (checkTime) {
-                    if (phyTimeoutMillis > 0) {
+                if (checkTime) {//Druid默认为true，适配c3p0是该值为false
+                    if (phyTimeoutMillis > 0) {//每个连接可存活的物理时长
                         long phyConnectTimeMillis = currentTimeMillis - connection.connectTimeMillis;
-                        if (phyConnectTimeMillis > phyTimeoutMillis) {
+                        if (phyConnectTimeMillis > phyTimeoutMillis) {//超过则销毁
                             evictConnections[evictCount++] = connection;
                             continue;
                         }
@@ -2799,38 +2799,38 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
                     long idleMillis = currentTimeMillis - connection.lastActiveTimeMillis;
 
-                    if (idleMillis < minEvictableIdleTimeMillis) {
+                    if (idleMillis < minEvictableIdleTimeMillis) {//只要遇到空闲时间小于配置的可空闲时间则直接跳出，只处理指标i之前的连接
                         break;
                     }
-
-                    if (checkTime && i < checkCount) {
+                    //空闲时间大于配置的可空闲时间继续处理
+                    if (checkTime && i < checkCount) {//从i:[0,1,2....poolingCount]递增，i标号小于需要检查数直接销毁
                         evictConnections[evictCount++] = connection;
                     } else if (idleMillis > maxEvictableIdleTimeMillis) {
-                        evictConnections[evictCount++] = connection;
-                    } else if (keepAlive) {
-                        keepAliveConnections[keepAliveCount++] = connection;
+                        evictConnections[evictCount++] = connection;//i标号大于需要检查数量 且 大于最大可空闲时间的直接回收销毁
+                    } else if (keepAlive) {//i标号大于需要检查数量 且小于最大可空闲时间的直接回收销毁 且需要保活则放入保活数组中
+                        keepAliveConnections[keepAliveCount++] = connection;//
                     }
-                } else {
+                } else {//适配c3p0时的处理逻辑，checktime为false
                     if (i < checkCount) {
-                        evictConnections[evictCount++] = connection;
+                        evictConnections[evictCount++] = connection;//从i:[0,1,2....poolingCount]递增，i标号小于需要检查数直接销毁
                     } else {
-                        break;
+                        break;//只处理前面checkcount数量的连接，到达了直接退出循环
                     }
                 }
             }
 
             int removeCount = evictCount + keepAliveCount;
             if (removeCount > 0) {
-                System.arraycopy(connections, removeCount, connections, 0, poolingCount - removeCount);
-                Arrays.fill(connections, poolingCount - removeCount, poolingCount, null);
+                System.arraycopy(connections, removeCount, connections, 0, poolingCount - removeCount);//connections数组中第removeCount开始的位置即为不清理的位置，保留数为poolingcount-removeCount,此操作即将这部分往前移动到0开始的地方
+                Arrays.fill(connections, poolingCount - removeCount, poolingCount, null);//将数组后后半部清空
                 poolingCount -= removeCount;
             }
-            keepAliveCheckCount += keepAliveCount;
+            keepAliveCheckCount += keepAliveCount;//该值用于统计总的保活数量
         } finally {
             lock.unlock();
         }
 
-        if (evictCount > 0) {
+        if (evictCount > 0) {//对于需要销毁的连接，直接调用close方法关闭
             for (int i = 0; i < evictCount; ++i) {
                 DruidConnectionHolder item = evictConnections[i];
                 Connection connection = item.getConnection();
@@ -2840,8 +2840,8 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             Arrays.fill(evictConnections, null);
         }
 
-        if (keepAliveCount > 0) {
-            this.getDataSourceStat().addKeepAliveCheckCount(keepAliveCount);
+        if (keepAliveCount > 0) {//对于需要保活的连接，直接调用close方法关闭
+            this.getDataSourceStat().addKeepAliveCheckCount(keepAliveCount);//统计保活数量
             // keep order
             for (int i = keepAliveCount - 1; i >= 0; --i) {
                 DruidConnectionHolder holer = keepAliveConnections[i];
@@ -2861,7 +2861,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
                 if (validate) {
                     holer.lastActiveTimeMillis = System.currentTimeMillis();
-                    put(holer);
+                    put(holer);//重新放入pooling池中，放入尾部
                 } else {
                     try {
                         connection.close();
