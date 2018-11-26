@@ -230,8 +230,10 @@ public abstract class DruidAbstractDataSource extends WrapperAdapter implements 
     protected boolean                                  useOracleImplicitCache                    = true;
 
     protected ReentrantLock                            lock;
-    protected Condition                                notEmpty;
-    protected Condition                                empty;
+    protected Condition                                notEmpty; //notEmpty.await()用于在没有连接上等待，直到连接可用才通过，一般会在获取连接时且（poolingCount==0）开始时调用。
+                                                                 //notEmpty.singal()由创建连接的任务执行，表示有连接可用了，一般会在creator或者recycle创建（回收）连接完成后时调用。
+    protected Condition                                empty;//emtpy.await()用于在连接已满上等待，直到可以创建连接时才通过，一般在创建连接时且（activeCount + poolingCount >= maxActive）开始时调用。
+                                                             //empty.signal()用于告诉创建线程连接没有满，还可以创建，因此也就是出现在连接销毁时调用，因为销毁了一个，所以就可以再创建达到满的状态。
 
     protected ReentrantLock                            activeConnectionLock                      = new ReentrantLock();
 
