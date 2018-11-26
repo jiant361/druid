@@ -2631,8 +2631,12 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             }
         }
     }
-
-    public int removeAbandoned() {//是否检测连接泄露，针对的是 activeConnections，符合条件则直接close掉。(activeConnections来源于应用用到连接时会将连接从connections中移除，并加入到activeConnections中，正常来说，应用用完之后需要显示调用close方法来关闭连接。)
+/*
+* 是否检测连接泄露，针对的是 activeConnections，符合条件则直接close掉。
+* activeConnections来源于应用用到连接时会将连接从connections中移除，并加入到activeConnections中，
+* 正常来说，应用用完之后需要显示调用close方法来关闭连接。)
+ */
+    public int removeAbandoned() {
         int removeCount = 0;
 
         long currrentNanos = System.nanoTime();
