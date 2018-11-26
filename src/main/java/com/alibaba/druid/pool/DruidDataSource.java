@@ -1357,7 +1357,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
      * 
      * @param realConnection
      */
-    public void discardConnection(Connection realConnection) {
+    public void discardConnection(Connection realConnection) {//简单的关闭连接，调用close方法
         JdbcUtils.close(realConnection);
 
         lock.lock();
@@ -1633,7 +1633,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
     /**
      * 回收连接
      */
-    protected void recycle(DruidPooledConnection pooledConnection) throws SQLException {
+    protected void recycle(DruidPooledConnection pooledConnection) throws SQLException {//由close方法触发，主动关闭时会校验该连接是否有效，即是否满足可回收的条件，否则直接关闭。
         final DruidConnectionHolder holder = pooledConnection.holder;
 
         if (holder == null) {
@@ -2632,7 +2632,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         }
     }
 
-    public int removeAbandoned() {
+    public int removeAbandoned() {//是否检测连接泄露，针对的是 activeConnections，符合条件则直接close掉。(activeConnections来源于应用用到连接时会将连接从connections中移除，并加入到activeConnections中，正常来说，应用用完之后需要显示调用close方法来关闭连接。)
         int removeCount = 0;
 
         long currrentNanos = System.nanoTime();
@@ -2646,13 +2646,13 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             for (; iter.hasNext();) {
                 DruidPooledConnection pooledConnection = iter.next();
 
-                if (pooledConnection.isRunning()) {
+                if (pooledConnection.isRunning()) {//连接正在运行则跳过
                     continue;
                 }
 
                 long timeMillis = (currrentNanos - pooledConnection.getConnectedTimeNano()) / (1000 * 1000);
 
-                if (timeMillis >= removeAbandonedTimeoutMillis) {
+                if (timeMillis >= removeAbandonedTimeoutMillis) {//检查不在运行的连接的，如果空闲时间大于设置需要关闭的时间，则加入关闭队列进行关闭
                     iter.remove();
                     pooledConnection.setTraceEnable(false);
                     abandonedList.add(pooledConnection);
@@ -2662,7 +2662,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             activeConnectionLock.unlock();
         }
 
-        if (abandonedList.size() > 0) {
+        if (abandonedList.size() > 0) {//关闭超时未使用的泄露连接
             for (DruidPooledConnection pooledConnection : abandonedList) {
                 final ReentrantLock lock = pooledConnection.lock;
                 lock.lock();
