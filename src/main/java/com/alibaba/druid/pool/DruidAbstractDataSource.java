@@ -998,7 +998,6 @@ public abstract class DruidAbstractDataSource extends WrapperAdapter implements 
         }
 
         if (maxWaitMillis > 0 && useUnfairLock == null && !this.inited) {
-        if (maxWaitMillis > 0 && useUnfairLock == null && !this.inited) {
             final ReentrantLock lock = this.lock;
             lock.lock();
             try {
