@@ -66,6 +66,23 @@ import com.alibaba.druid.util.*;
 /**
  * @author wenshao [szujobs@hotmail.com]
  * @author ljw [ljw2083@alibaba-inc.com]
+ * Druid连接池参数
+ * fairlock 默认为false，即不公平，初始化之后不可以对该属性进行更改。
+ * testOnBorrow || testOnReturn || testWhileIdle 其中一个设置为true时，validationQuery必须设置。
+ * timeBetweenEvictionRunsMillis 销毁线程执行的间隔时间 如果该值小于等于0，则置为1000
+ * ScheduledExecutorService的scheduleAtFixedRate方法
+ * maxWait :用于获取物理连接的超时时间，
+ *
+ * poolingcount 同步初始化intisize时增加，当获取连接成功时将该值减一，相当于从connections中移除掉，当removeAbandoned为true时，再添加到activeConnections中。
+ * 销毁线程将不为running状态且时间空闲时间大于removeAbandonedTimeoutMillis的连接从activeConnection中remove掉，并加入abandonedList，从abandonedList关闭连接。
+ * 如果不打开removeAbandoned，应用在获取数据库连接时应当主动关闭连接，否则可能造成连接泄露。
+ *
+ * createTaskCount 异步初始化initsize时增加，表示正在创建连接的个数，创建完毕或者不满足条件时减少。异步创建连接的线程不能超过3个。
+ * 创建时如果超过重试次数仍然出错，则按这个时间间timeBetweenConnectErrorMillis之后重试。
+ *
+ * 回收连接表示将可用的连接重新放到connections中，同时poolingcount+1.
+ * 抛弃连接表示直接将该连接抛弃，直接调用close方法，不再使用。activecount-1 discardCount+1。
+ * 回收的动作出现在close方法中，在经过一系列的过滤器之后会调用这个方法去选择满足回收条件后进行回收，否则直接关闭close。
  */
 public abstract class DruidAbstractDataSource extends WrapperAdapter implements DruidAbstractDataSourceMBean, DataSource, DataSourceProxy, Serializable {
     private static final long                          serialVersionUID                          = 1L;
@@ -139,7 +156,13 @@ public abstract class DruidAbstractDataSource extends WrapperAdapter implements 
 
     protected volatile int                             maxWaitThreadCount                        = -1;
     protected volatile boolean                         accessToUnderlyingConnectionAllowed       = true;
-
+    /*
+    timeBetweenEvictionRunsMillis
+获取连接时，当testOnBorrow属性为true 时，除了检验连接的有效性（执行validationQuery），当为mysql数据库时，还需检验空闲时间是否大于timeBetweenEvictionRunsMillis，如果大于则直接close该连接。
+获取连接时，当testWhileIdle属性为true 时，空闲时间大于timeBetweenEvictionRunsMillis则进行检查sql是否还有效，无效则直接close该连接；有效且为mysql数据库时，还需检验空闲时间是否大于timeBetweenEvictionRunsMillis，如果大于则直接close该连接返回无效。
+销毁线程destroyConnectionThread运行时，每次循环检测的间隔时间timeBetweenEvictionRunsMillis，即执行shrink()、removeAbandoned()方法的间隔时间。
+回收连接recycle（）时，当testOnReturn属性为true 时，除了检验连接的有效性（执行validationQuery），当为mysql数据库时，还需检验空闲时间是否大于timeBetweenEvictionRunsMillis，如果大于则直接close该连接
+     */
     protected volatile long                            timeBetweenEvictionRunsMillis             = DEFAULT_TIME_BETWEEN_EVICTION_RUNS_MILLIS;
     protected volatile int                             numTestsPerEvictionRun                    = DEFAULT_NUM_TESTS_PER_EVICTION_RUN;
     protected volatile long                            minEvictableIdleTimeMillis                = DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS;
