@@ -143,7 +143,12 @@ public class DruidPooledConnection extends PoolableWrapper implements javax.sql.
     public boolean isOracle() {
         return holder.getDataSource().isOracle();
     }
-
+/*
+当开启了ps cache时，在判断关闭statement时需判断一下情况。
+1、如果该statement的缓存设置pooled = conn.getConnectionHolder().isPoolPreparedStatements();为true（中间poolPreparedStatements属性可能发生变化），并且持有它的连接poolPreparedStatements也设置为true，且无异常发生则放入 cache的map里
+2、如果该statement的缓存设置pooled = conn.getConnectionHolder().isPoolPreparedStatements();为true（中间poolPreparedStatements属性可能发生变化），并且持有它的连接poolPreparedStatements也设置为true，且有异常发生则从 cache的map里移除该statement，并关闭该statement。
+3、没有开启ps cache的情况下直接关闭statement。
+ */
     public void closePoolableStatement(DruidPooledPreparedStatement stmt) throws SQLException {
         PreparedStatement rawStatement = stmt.getRawPreparedStatement();
 
